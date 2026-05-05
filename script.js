@@ -21,7 +21,9 @@ function randomBetween(min, max) {
 }
 
 function resize() {
-  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const compactScreen = window.innerWidth < 760;
+  state.dpr = Math.min(window.devicePixelRatio || 1, coarsePointer || compactScreen ? 1.35 : 2);
   state.width = window.innerWidth;
   state.height = window.innerHeight;
   canvas.width = Math.floor(state.width * state.dpr);
@@ -30,7 +32,8 @@ function resize() {
   canvas.style.height = `${state.height}px`;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
 
-  const starCount = Math.min(360, Math.max(130, Math.floor((state.width * state.height) / 4700)));
+  const density = coarsePointer || compactScreen ? 7600 : 4700;
+  const starCount = Math.min(360, Math.max(110, Math.floor((state.width * state.height) / density)));
   state.stars = Array.from({ length: starCount }, () => ({
     x: Math.random() * state.width,
     y: Math.random() * state.height,
@@ -245,10 +248,15 @@ function animate() {
 }
 
 window.addEventListener("resize", resize);
-window.addEventListener("pointermove", (event) => {
+window.visualViewport?.addEventListener("resize", resize);
+
+function aimAt(event) {
   state.targetX = event.clientX / state.width;
   state.targetY = event.clientY / state.height;
-});
+}
+
+window.addEventListener("pointermove", aimAt, { passive: true });
+window.addEventListener("pointerdown", aimAt, { passive: true });
 window.addEventListener("pointerleave", () => {
   state.targetX = 0.5;
   state.targetY = 0.5;
@@ -259,6 +267,9 @@ toggleButton.addEventListener("click", () => {
   toggleButton.textContent = collapsed ? "Развернуть текст" : "Свернуть текст";
   toggleButton.setAttribute("aria-expanded", String(!collapsed));
   copyPanel.setAttribute("aria-hidden", String(collapsed));
+  if (collapsed) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 });
 
 state.targetX = 0.5;
